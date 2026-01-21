@@ -1,0 +1,187 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// 用户表
+model User {
+  id                String       @id @default(cuid())
+  githubId          Int          @unique
+  login             String       // GitHub 用户名
+  name              String?
+  email             String?
+  avatarUrl         String?
+  accessToken       String       @db.Text  // 加密存储
+  installationId    Int?         // GitHub App Installation ID
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  repositories      Repository[]
+  translationTasks  TranslationTask[]
+  userUsage         UserUsage[]
+  apiKeys           ApiKey[]
+
+  @@index([githubId])
+  @@index([login])
+}
+
+// API Key 表（用户自带的 OpenRouter Key）
+model ApiKey {
+  id          String   @id @default(cuid())
+  userId      String
+  provider    String   @default("openrouter")  // 预留其他 AI 提供商
+  encryptedKey String  @db.Text               // AES-256 加密存储
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// 用户使用量表（用于限流）
+model UserUsage {
+  id        String   @id @default(cuid())
+  userId    String
+  date      String   // YYYY-MM-DD 格式
+  count     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+}
+
+// 仓库表
+model Repository {
+  id              String   @id @default(cuid())
+  userId          String
+  githubRepoId    Int      @unique
+  owner           String   // 仓库所有者
+  name            String   // 仓库名称
+  fullName        String   // owner/name
+  description     String?  @db.Text
+  defaultBranch   String   @default("main")
+  isPrivate       Boolean  @default(false)
+  lastSyncedAt    DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  config          RepoConfig?
+  translationTasks TranslationTask[]
+
+  @@index([userId])
+  @@index([fullName])
+}
+
+// 仓库配置表
+model RepoConfig {
+  id                String   @id @default(cuid())
+  repositoryId      String   @unique
+  baseLanguage      String   @default("zh-CN")  // 基准语言
+  targetLanguages   Json     // 目标语言列表 ["en", "ja", "ko"]
+  includePaths      Json?    // 包含的路径 ["docs/**", "README.md"]
+  excludePaths      Json?    // 排除的路径 ["docs/internal/**"]
+  translationBranch String   @default("translations")  // 翻译分支名
+  aiModel           String?  // 指定的 AI 模型（可选）
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  repository        Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+}
+
+// 翻译任务表
+model TranslationTask {
+  id              String           @id @default(cuid())
+  userId          String
+  repositoryId    String
+  status          TranslationStatus @default(PENDING)
+  type            TaskType         @default(FULL)
+  targetLanguages Json             // 本次任务的目标语言
+  totalFiles      Int              @default(0)
+  completedFiles  Int              @default(0)
+  failedFiles     Int              @default(0)
+  progress        Float            @default(0)  // 0-100
+  errorMessage    String?          @db.Text
+  pullRequestUrl  String?          // PR 链接
+  pullRequestNumber Int?           // PR 编号
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repository      Repository       @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  translatedFiles TranslatedFile[]
+
+  @@index([userId])
+  @@index([repositoryId])
+  @@index([status])
+}
+
+// 翻译文件表
+model TranslatedFile {
+  id                String        @id @default(cuid())
+  translationTaskId String
+  sourcePath        String        // 源文件路径
+  targetPath        String        // 翻译后的路径
+  targetLanguage    String        // 目标语言
+  status            FileStatus    @default(PENDING)
+  sourceContent     String?       @db.LongText
+  translatedContent String?       @db.LongText
+  tokensUsed        Int?          // 消耗的 token 数
+  errorMessage      String?       @db.Text
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  translationTask   TranslationTask @relation(fields: [translationTaskId], references: [id], onDelete: Cascade)
+
+  @@index([translationTaskId])
+  @@index([status])
+}
+
+// 翻译任务状态枚举
+enum TranslationStatus {
+  PENDING     // 等待中
+  RUNNING     // 运行中
+  COMPLETED   // 已完成
+  FAILED      // 失败
+  CANCELLED   // 已取消
+}
+
+// 任务类型枚举
+enum TaskType {
+  FULL        // 全量翻译
+  INCREMENTAL // 增量翻译
+}
+
+// 文件状态枚举
+enum FileStatus {
+  PENDING     // 等待中
+  TRANSLATING // 翻译中
+  COMPLETED   // 已完成
+  FAILED      // 失败
+  SKIPPED     // 已跳过
+}
+
+// 系统配置表（管理员配置）
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String   @db.Text
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

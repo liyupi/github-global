@@ -1,8 +1,7 @@
 // 翻译任务 API - 创建任务
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 import { checkRateLimit, incrementUsage } from '@/lib/ratelimit';
 import { translationQueue } from '@/lib/queue/local-queue';
@@ -20,7 +19,7 @@ translationQueue.setProcessor(async (data) => {
 export async function POST(request: NextRequest) {
   try {
     // 1. 验证用户身份
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

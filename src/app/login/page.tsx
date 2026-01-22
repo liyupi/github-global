@@ -1,4 +1,5 @@
 // 登录页面
+import { signIn } from "@/auth"
 
 export default function LoginPage() {
   return (
@@ -10,12 +11,19 @@ export default function LoginPage() {
           使用 GitHub 账号登录，开始翻译你的项目文档
         </p>
 
-        <a
-          href="/api/auth/signin"
-          className="block w-full bg-black text-white text-center px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 transition"
+        <form
+          action={async () => {
+            "use server"
+            await signIn("github", { redirectTo: "/dashboard" })
+          }}
         >
-          使用 GitHub 登录
-        </a>
+          <button 
+            type="submit"
+            className="block w-full bg-black text-white text-center px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 transition cursor-pointer"
+          >
+            使用 GitHub 登录
+          </button>
+        </form>
 
         <p className="mt-6 text-sm text-gray-500 text-center">
           登录即表示您同意我们的服务条款和隐私政策

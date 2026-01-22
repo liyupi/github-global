@@ -1,8 +1,7 @@
 // 仓库详情 API
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 
 /**
@@ -10,17 +9,19 @@ import { prisma } from '@/lib/db';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     const repository = await prisma.repository.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
       include: {
@@ -31,7 +32,11 @@ export async function GET(
           select: {
             id: true,
             status: true,
+            type: true,
             targetLanguages: true,
+            totalFiles: true,
+            completedFiles: true,
+            failedFiles: true,
             progress: true,
             pullRequestUrl: true,
             pullRequestNumber: true,
@@ -49,7 +54,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(repository);
+    return NextResponse.json({ repository });
   } catch (error) {
     console.error('Get repo error:', error);
     return NextResponse.json(
@@ -64,17 +69,19 @@ export async function GET(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     const repository = await prisma.repository.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
     });
@@ -87,7 +94,7 @@ export async function DELETE(
     }
 
     await prisma.repository.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ success: true });

@@ -1,59 +1,83 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Globe, ArrowLeft, Save, Languages, FolderTree } from "lucide-react";
+import { Globe, ArrowLeft, Save, Languages, FolderTree, Loader2, AlertCircle } from "lucide-react";
 import { SUPPORTED_LANGUAGES } from "@/lib/constants";
 
-// 模拟文件树数据
-const mockFileTree = [
-  {
-    name: "README.md",
-    path: "README.md",
-    type: "file" as const,
-    isMarkdown: true,
-  },
-  {
-    name: "docs",
-    path: "docs",
-    type: "dir" as const,
-    children: [
-      {
-        name: "guide.md",
-        path: "docs/guide.md",
-        type: "file" as const,
-        isMarkdown: true,
-      },
-      {
-        name: "api.md",
-        path: "docs/api.md",
-        type: "file" as const,
-        isMarkdown: true,
-      },
-    ],
-  },
-  {
-    name: "src",
-    path: "src",
-    type: "dir" as const,
-    children: [
-      {
-        name: "index.ts",
-        path: "src/index.ts",
-        type: "file" as const,
-        isMarkdown: false,
-      },
-    ],
-  },
-];
+// 文件树节点类型
+interface FileNode {
+  name: string;
+  path: string;
+  type: "file" | "dir";
+  isMarkdown?: boolean;
+  children?: FileNode[];
+}
 
-export default function RepoConfigPage({ params }: { params: { id: string } }) {
-  const [baseLanguage, setBaseLanguage] = useState("zh-CN");
-  const [targetLanguages, setTargetLanguages] = useState<string[]>(["en", "ja"]);
-  const [selectedFiles, setSelectedFiles] = useState<string[]>(["README.md", "docs/guide.md"]);
+export default function RepoConfigPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const router = useRouter();
+  
+  // 状态
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  
+  // 配置数据
+  const [baseLanguage, setBaseLanguage] = useState("zh-CN");
+  const [targetLanguages, setTargetLanguages] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [fileTree, setFileTree] = useState<FileNode[]>([]);
+
+  // 加载仓库配置和文件树
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // 并行获取仓库信息和文件树
+        const [repoRes, filesRes] = await Promise.all([
+          fetch(`/api/repos/${id}`),
+          fetch(`/api/repos/${id}/files`),
+        ]);
+
+        if (!repoRes.ok) {
+          if (repoRes.status === 401) {
+            router.push('/login');
+            return;
+          }
+          throw new Error('Failed to fetch repository');
+        }
+
+        const repoData = await repoRes.json();
+        const config = repoData.repository?.config;
+        
+        if (config) {
+          setBaseLanguage(config.baseLanguage || 'zh-CN');
+          setTargetLanguages(config.targetLanguages || []);
+          setSelectedFiles(config.includePaths || []);
+        }
+
+        if (filesRes.ok) {
+          const filesData = await filesRes.json();
+          setFileTree(filesData.tree || []);
+        }
+      } catch (err: any) {
+        console.error('Fetch config error:', err);
+        setError(err.message || '加载配置失败');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id, router]);
 
   const handleLanguageToggle = (code: string) => {
     if (targetLanguages.includes(code)) {
@@ -73,13 +97,53 @@ export default function RepoConfigPage({ params }: { params: { id: string } }) {
 
   const handleSave = async () => {
     setIsSaving(true);
-    // TODO: 实现保存逻辑
-    setTimeout(() => {
+    setSaveError(null);
+    setSaveSuccess(false);
+    
+    try {
+      const response = await fetch(`/api/repos/${id}/config`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          baseLanguage,
+          targetLanguages,
+          includePaths: selectedFiles,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save configuration');
+      }
+      
+      setSaveSuccess(true);
+      // 2秒后跳转回仓库详情页
+      setTimeout(() => {
+        router.push(`/repo/${id}`);
+      }, 1500);
+    } catch (err: any) {
+      console.error('Save config error:', err);
+      setSaveError(err.message || '保存配置失败');
+    } finally {
       setIsSaving(false);
-    }, 1500);
+    }
   };
 
-  const renderFileTree = (nodes: typeof mockFileTree, level = 0) => {
+  // 获取所有 Markdown 文件路径
+  const getAllMarkdownFiles = (nodes: FileNode[]): string[] => {
+    return nodes.flatMap((node) => {
+      if (node.type === "file" && node.isMarkdown) return [node.path];
+      if (node.type === "dir" && node.children) {
+        return getAllMarkdownFiles(node.children);
+      }
+      return [];
+    });
+  };
+
+  const renderFileTree = (nodes: FileNode[], level = 0) => {
     return nodes.map((node) => (
       <div key={node.path} style={{ marginLeft: `${level * 20}px` }}>
         {node.type === "file" && node.isMarkdown ? (
@@ -107,6 +171,36 @@ export default function RepoConfigPage({ params }: { params: { id: string } }) {
     ));
   };
 
+  // 加载中状态
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 text-primary mx-auto mb-4 animate-spin" />
+          <p className="text-muted-foreground">加载配置中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 错误状态
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="text-center py-12 max-w-md">
+          <CardContent>
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">加载失败</h3>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Link href="/dashboard">
+              <Button>返回控制台</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* 导航栏 */}
@@ -129,7 +223,7 @@ export default function RepoConfigPage({ params }: { params: { id: string } }) {
 
       <div className="container mx-auto px-4 py-8">
         {/* 返回按钮 */}
-        <Link href={`/repo/${params.id}`}>
+        <Link href={`/repo/${id}`}>
           <Button variant="ghost" className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
             返回仓库详情
@@ -214,25 +308,24 @@ export default function RepoConfigPage({ params }: { params: { id: string } }) {
             </CardHeader>
             <CardContent>
               <div className="border rounded-lg p-4 max-h-96 overflow-y-auto">
-                {renderFileTree(mockFileTree)}
+                {fileTree.length > 0 ? (
+                  renderFileTree(fileTree)
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FolderTree className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>暂无可翻译的 Markdown 文件</p>
+                  </div>
+                )}
               </div>
               <div className="mt-4 flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const allMarkdownFiles = mockFileTree
-                      .flatMap((node) => {
-                        if (node.type === "file" && node.isMarkdown) return [node.path];
-                        if (node.type === "dir" && node.children) {
-                          return node.children
-                            .filter((child) => child.type === "file" && child.isMarkdown)
-                            .map((child) => child.path);
-                        }
-                        return [];
-                      });
+                    const allMarkdownFiles = getAllMarkdownFiles(fileTree);
                     setSelectedFiles(allMarkdownFiles);
                   }}
+                  disabled={fileTree.length === 0}
                 >
                   全选
                 </Button>
@@ -246,17 +339,39 @@ export default function RepoConfigPage({ params }: { params: { id: string } }) {
 
         {/* 保存按钮 */}
         <div className="mt-8 flex justify-end gap-4">
-          <Link href={`/repo/${params.id}`}>
+          <Link href={`/repo/${id}`}>
             <Button variant="outline">取消</Button>
           </Link>
           <Button
             onClick={handleSave}
-            disabled={isSaving || targetLanguages.length === 0 || selectedFiles.length === 0}
+            disabled={isSaving || targetLanguages.length === 0}
           >
-            <Save className="mr-2 h-4 w-4" />
-            {isSaving ? "保存中..." : "保存配置"}
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                保存中...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                保存配置
+              </>
+            )}
           </Button>
         </div>
+        
+        {/* 保存结果提示 */}
+        {saveError && (
+          <div className="mt-4 p-4 bg-destructive/10 border border-destructive rounded-lg flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-5 w-5" />
+            {saveError}
+          </div>
+        )}
+        {saveSuccess && (
+          <div className="mt-4 p-4 bg-green-500/10 border border-green-500 rounded-lg text-green-600">
+            配置保存成功！正在跳转...
+          </div>
+        )}
 
         {/* 配置预览 */}
         <Card className="mt-8">

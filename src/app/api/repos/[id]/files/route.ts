@@ -1,28 +1,30 @@
 // 获取仓库文件树 API
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
-import { getInstallationOctokit } from '@/lib/github/client';
+import { getInstallationOctokit, getUserOctokit } from '@/lib/github/client';
 import { getFileTree } from '@/lib/github/operations';
+import { decrypt } from '@/lib/crypto';
 
 /**
  * GET /api/repos/:id/files - 获取仓库文件树
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     const repository = await prisma.repository.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
       include: { user: true },
@@ -35,14 +37,20 @@ export async function GET(
       );
     }
 
-    if (!repository.user.installationId) {
+    let octokit;
+    
+    // 优先使用 Installation ID，否则使用用户的 access token
+    if (repository.user.installationId) {
+      octokit = await getInstallationOctokit(repository.user.installationId);
+    } else if (repository.user.accessToken) {
+      const accessToken = decrypt(repository.user.accessToken);
+      octokit = getUserOctokit(accessToken);
+    } else {
       return NextResponse.json(
-        { error: 'GitHub App not installed' },
+        { error: 'No authentication method available' },
         { status: 400 }
       );
     }
-
-    const octokit = await getInstallationOctokit(repository.user.installationId);
 
     // 递归获取文件树
     const tree = await getFileTree(

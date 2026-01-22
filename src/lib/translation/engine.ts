@@ -1,7 +1,7 @@
 // 翻译引擎核心模块
 
 import { prisma } from '@/lib/db';
-import { getInstallationOctokit } from '@/lib/github/client';
+import { getInstallationOctokit, getUserOctokit } from '@/lib/github/client';
 import { 
   getFileTree, 
   createBranch, 
@@ -15,6 +15,7 @@ import { insertLanguageLinks } from '@/lib/translation/readme-updater';
 import { decrypt } from '@/lib/crypto';
 import { TranslationStatus, FileStatus } from '@prisma/client';
 import { FileTreeNode } from '@/types';
+import { Octokit } from 'octokit';
 
 export interface TranslationOptions {
   taskId: string;
@@ -155,11 +156,33 @@ export async function executeTranslation(options: TranslationOptions): Promise<{
     const apiKey = await getApiKeyForUser(userId);
 
     // 3. 获取 GitHub Octokit 客户端
-    if (!repository.user.installationId) {
-      throw new Error('GitHub App not installed for this repository');
+    let octokit: Octokit;
+    
+    if (repository.user.installationId) {
+      // 优先使用 GitHub App Installation token（推荐方式）
+      console.log('[Translation] Attempting to use GitHub App Installation ID:', repository.user.installationId);
+      try {
+        octokit = await getInstallationOctokit(repository.user.installationId);
+        console.log('[Translation] Successfully authenticated with GitHub App');
+      } catch (error) {
+        console.error('[Translation] GitHub App authentication failed:', error);
+        // Fallback 到用户 token
+        if (repository.user.accessToken) {
+          console.log('[Translation] Falling back to user access token');
+          const accessToken = decrypt(repository.user.accessToken);
+          octokit = getUserOctokit(accessToken);
+        } else {
+          throw error;
+        }
+      }
+    } else if (repository.user.accessToken) {
+      // 使用用户的 OAuth access token
+      console.log('[Translation] Using user access token');
+      const accessToken = decrypt(repository.user.accessToken);
+      octokit = getUserOctokit(accessToken);
+    } else {
+      throw new Error('No authentication method available. Please install the GitHub App.');
     }
-
-    const octokit = await getInstallationOctokit(repository.user.installationId);
 
     // 4. 获取仓库文件树
     const fileTree = await getFileTree(

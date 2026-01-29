@@ -28,7 +28,8 @@ export async function getFileTree(
   octokit: Octokit,
   owner: string,
   repo: string,
-  path: string = ''
+  path: string = '',
+  markdownOnly: boolean = false
 ): Promise<FileTreeNode[]> {
   const { data } = await octokit.rest.repos.getContent({
     owner,
@@ -39,34 +40,47 @@ export async function getFileTree(
   const items = Array.isArray(data) ? data : [data];
   const result: FileTreeNode[] = [];
 
+  // 保持 GitHub API 返回的原始顺序，不进行排序
   for (const item of items) {
-    const node: FileTreeNode = {
-      name: item.name,
-      path: item.path,
-      type: item.type === 'dir' ? 'dir' : 'file',
-    };
-
+    const isMarkdown = item.name.endsWith('.md') || item.name.endsWith('.mdx');
+    
     if (item.type === 'file') {
-      node.isMarkdown = item.name.endsWith('.md') || item.name.endsWith('.mdx');
-    }
-
-    if (item.type === 'dir' && !SKIP_DIRECTORIES.includes(item.name)) {
+      // 如果启用了 markdownOnly 模式，只保留 Markdown 文件
+      if (markdownOnly && !isMarkdown) {
+        continue;
+      }
+      
+      const node: FileTreeNode = {
+        name: item.name,
+        path: item.path,
+        type: 'file',
+        isMarkdown,
+      };
+      result.push(node);
+    } else if (item.type === 'dir' && !SKIP_DIRECTORIES.includes(item.name)) {
+      // 递归获取子目录
       try {
-        node.children = await getFileTree(octokit, owner, repo, item.path);
+        const children = await getFileTree(octokit, owner, repo, item.path, markdownOnly);
+        
+        // 如果启用了 markdownOnly 模式，只保留包含 Markdown 文件的目录
+        if (markdownOnly && children.length === 0) {
+          continue;
+        }
+        
+        const node: FileTreeNode = {
+          name: item.name,
+          path: item.path,
+          type: 'dir',
+          children,
+        };
+        result.push(node);
       } catch (error) {
         console.error(`Error fetching directory ${item.path}:`, error);
-        node.children = [];
       }
     }
-
-    result.push(node);
   }
 
-  return result.sort((a, b) => {
-    // 目录优先
-    if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
-    return a.name.localeCompare(b.name);
-  });
+  return result;
 }
 
 /**
@@ -252,7 +266,8 @@ export async function compareCommits(
   const { data } = await octokit.rest.repos.compareCommits({
     owner,
     repo,
-    basehead: `${base}...${head}`,
+    base,
+    head,
   });
 
   return data;

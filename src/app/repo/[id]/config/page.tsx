@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navbar, Footer } from "@/components/layout";
-import { ArrowLeft, Save, Languages, FolderTree, Loader2, AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Save, Languages, FolderTree, Loader2, AlertCircle, CheckCircle2, RefreshCw, ChevronRight, ChevronDown, FileText } from "lucide-react";
 import { SUPPORTED_LANGUAGES } from "@/lib/constants";
 
 // 文件树节点类型
@@ -37,6 +37,7 @@ export default function RepoConfigPage({ params }: { params: Promise<{ id: strin
   const [targetLanguages, setTargetLanguages] = useState<string[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
+  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
 
   // 检查登录状态
   useEffect(() => {
@@ -122,6 +123,37 @@ export default function RepoConfigPage({ params }: { params: Promise<{ id: strin
     }
   };
 
+  const handleDirToggle = (path: string) => {
+    setExpandedDirs((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  };
+
+  const handleExpandAll = () => {
+    const allDirs = getAllDirPaths(fileTree);
+    setExpandedDirs(new Set(allDirs));
+  };
+
+  const handleCollapseAll = () => {
+    setExpandedDirs(new Set());
+  };
+
+  // 获取所有目录路径
+  const getAllDirPaths = (nodes: FileNode[]): string[] => {
+    return nodes.flatMap((node) => {
+      if (node.type === "dir") {
+        return [node.path, ...(node.children ? getAllDirPaths(node.children) : [])];
+      }
+      return [];
+    });
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     setSaveError(null);
@@ -184,19 +216,30 @@ export default function RepoConfigPage({ params }: { params: Promise<{ id: strin
               onChange={() => handleFileToggle(node.path)}
               className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
             />
+            <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             <span className="text-sm truncate">{node.name}</span>
           </label>
         ) : node.type === "dir" ? (
           <div>
-            <div className="flex items-center gap-2 py-1.5 px-2 font-medium text-sm">
+            <button
+              type="button"
+              onClick={() => handleDirToggle(node.path)}
+              className="flex items-center gap-1 py-1.5 px-2 font-medium text-sm hover:bg-accent rounded w-full text-left"
+            >
+              {expandedDirs.has(node.path) ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              )}
               <FolderTree className="h-4 w-4 text-primary flex-shrink-0" />
               <span className="truncate">{node.name}</span>
-            </div>
-            {node.children && renderFileTree(node.children, level + 1)}
+              <span className="text-xs text-muted-foreground ml-auto">
+                {node.children?.length || 0}
+              </span>
+            </button>
+            {expandedDirs.has(node.path) && node.children && renderFileTree(node.children, level + 1)}
           </div>
-        ) : (
-          <div className="py-1.5 px-2 text-sm text-muted-foreground truncate">{node.name}</div>
-        )}
+        ) : null}
       </div>
     ));
   };
@@ -381,10 +424,27 @@ export default function RepoConfigPage({ params }: { params: Promise<{ id: strin
                     }}
                     disabled={fileTree.length === 0}
                   >
-                    全选
+                    全选文件
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => setSelectedFiles([])}>
-                    清空
+                    清空选择
+                  </Button>
+                  <div className="h-4 w-px bg-border mx-1" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleExpandAll}
+                    disabled={fileTree.length === 0}
+                  >
+                    展开全部
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCollapseAll}
+                    disabled={fileTree.length === 0}
+                  >
+                    折叠全部
                   </Button>
                 </div>
               </CardContent>

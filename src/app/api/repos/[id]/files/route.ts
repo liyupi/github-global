@@ -80,12 +80,13 @@ export async function GET(
       );
     }
 
-    // 递归获取文件树
+    // 递归获取文件树（只返回 Markdown 文件和包含 Markdown 的目录）
     const tree = await getFileTree(
       octokit,
       repository.owner,
       repository.name,
-      ''
+      '',
+      true  // markdownOnly = true
     );
 
     return NextResponse.json({ tree });

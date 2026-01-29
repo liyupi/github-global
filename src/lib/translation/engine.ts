@@ -265,6 +265,16 @@ export async function executeTranslation(options: TranslationOptions): Promise<{
             aiModel
           );
 
+          // 检查目标文件是否已存在（可能是之前的翻译任务创建的）
+          // 如果存在，需要获取其 SHA 才能更新
+          const existingSha = await getFileSha(
+            octokit,
+            repository.owner,
+            repository.name,
+            targetPath,
+            branchName
+          );
+
           // 写入 GitHub（使用翻译后的目标路径）
           await createOrUpdateFile(
             octokit,
@@ -273,7 +283,8 @@ export async function executeTranslation(options: TranslationOptions): Promise<{
             targetPath,
             translatedContent,
             `[GitHub Global] Translate ${filePath} to ${targetLang}`,
-            branchName
+            branchName,
+            existingSha || undefined  // 如果文件已存在，传递 SHA；否则不传
           );
 
           // 更新文件状态

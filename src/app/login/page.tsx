@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Navbar, Footer } from "@/components/layout";
 import { Loader2, AlertCircle, Github } from "lucide-react";
 
-export default function LoginPage() {
+// 登录页面内容组件
+function LoginContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -132,5 +133,30 @@ export default function LoginPage() {
       
       <Footer />
     </div>
+  );
+}
+
+// 加载状态组件
+function LoginLoading() {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Navbar user={null} />
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 text-primary mx-auto mb-4 animate-spin" />
+          <p className="text-muted-foreground">加载中...</p>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+}
+
+// 主页面组件 - 用 Suspense 包裹
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginLoading />}>
+      <LoginContent />
+    </Suspense>
   );
 }

@@ -125,6 +125,47 @@ export default function RepoConfigPage({ params }: { params: Promise<{ id: strin
     }
   };
 
+  // 获取目录下所有 Markdown 文件（递归）
+  const getMarkdownFilesInDir = (nodes: FileNode[], dirPath: string): string[] => {
+    for (const node of nodes) {
+      if (node.path === dirPath && node.type === "dir" && node.children) {
+        return getAllMarkdownFiles(node.children);
+      }
+      if (node.type === "dir" && node.children) {
+        const result = getMarkdownFilesInDir(node.children, dirPath);
+        if (result.length > 0) return result;
+      }
+    }
+    return [];
+  };
+
+  // 处理目录选择（选中/取消选中目录下所有文件）
+  const handleDirSelect = (dirPath: string) => {
+    const filesInDir = getMarkdownFilesInDir(fileTree, dirPath);
+    if (filesInDir.length === 0) return;
+
+    const allSelected = filesInDir.every((file) => selectedFiles.includes(file));
+    if (allSelected) {
+      // 取消选中所有
+      setSelectedFiles(selectedFiles.filter((file) => !filesInDir.includes(file)));
+    } else {
+      // 选中所有（合并去重）
+      const newSelected = [...new Set([...selectedFiles, ...filesInDir])];
+      setSelectedFiles(newSelected);
+    }
+  };
+
+  // 获取目录的选中状态：'all' | 'some' | 'none'
+  const getDirSelectState = (dirPath: string): 'all' | 'some' | 'none' => {
+    const filesInDir = getMarkdownFilesInDir(fileTree, dirPath);
+    if (filesInDir.length === 0) return 'none';
+    
+    const selectedCount = filesInDir.filter((file) => selectedFiles.includes(file)).length;
+    if (selectedCount === 0) return 'none';
+    if (selectedCount === filesInDir.length) return 'all';
+    return 'some';
+  };
+
   const handleDirToggle = (path: string) => {
     setExpandedDirs((prev) => {
       const next = new Set(prev);
@@ -224,22 +265,36 @@ export default function RepoConfigPage({ params }: { params: Promise<{ id: strin
           </label>
         ) : node.type === "dir" ? (
           <div>
-            <button
-              type="button"
-              onClick={() => handleDirToggle(node.path)}
-              className="flex items-center gap-1 py-1.5 px-2 font-medium text-sm hover:bg-accent rounded w-full text-left"
-            >
-              {expandedDirs.has(node.path) ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              )}
-              <FolderTree className="h-4 w-4 text-primary flex-shrink-0" />
-              <span className="truncate">{node.name}</span>
-              <span className="text-xs text-muted-foreground ml-auto">
-                {node.children?.length || 0}
-              </span>
-            </button>
+            <div className="flex items-center gap-1 py-1.5 px-2 font-medium text-sm hover:bg-accent rounded">
+              {/* 目录复选框 */}
+              <input
+                type="checkbox"
+                checked={getDirSelectState(node.path) === 'all'}
+                ref={(el) => {
+                  if (el) el.indeterminate = getDirSelectState(node.path) === 'some';
+                }}
+                onChange={() => handleDirSelect(node.path)}
+                onClick={(e) => e.stopPropagation()}
+                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary flex-shrink-0"
+              />
+              {/* 展开/折叠按钮 */}
+              <button
+                type="button"
+                onClick={() => handleDirToggle(node.path)}
+                className="flex items-center gap-1 flex-1 min-w-0"
+              >
+                {expandedDirs.has(node.path) ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                )}
+                <FolderTree className="h-4 w-4 text-primary flex-shrink-0" />
+                <span className="truncate">{node.name}</span>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {node.children?.length || 0}
+                </span>
+              </button>
+            </div>
             {expandedDirs.has(node.path) && node.children && renderFileTree(node.children, level + 1)}
           </div>
         ) : null}

@@ -34,13 +34,14 @@ model User {
 
 // API Key 表（用户自带的 OpenRouter Key）
 model ApiKey {
-  id          String   @id @default(cuid())
-  userId      String
-  provider    String   @default("openrouter")  // 预留其他 AI 提供商
-  encryptedKey String  @db.Text               // AES-256 加密存储
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  userId       String
+  provider     String   @default("openrouter")  // 预留其他 AI 提供商
+  encryptedKey String   @db.Text               // AES-256 加密存储
+  isActive     Boolean  @default(true)
+  defaultModel String?  // 用户默认使用的 AI 模型（如 deepseek/deepseek-chat）
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 

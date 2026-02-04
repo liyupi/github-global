@@ -19,8 +19,12 @@ import {
   AlertCircle, 
   CheckCircle2,
   LogOut,
-  ExternalLink
+  ExternalLink,
+  Sparkles,
+  Check
 } from "lucide-react";
+import { SUPPORTED_AI_MODELS, DEFAULT_AI_MODEL } from "@/lib/constants";
+import type { AIModel } from "@/types";
 
 interface Usage {
   today: {
@@ -29,6 +33,7 @@ interface Usage {
     limit: number;
   };
   hasApiKey: boolean;
+  defaultModel: string | null;
 }
 
 export default function SettingsPage() {
@@ -44,6 +49,11 @@ export default function SettingsPage() {
   const [usage, setUsage] = useState<Usage | null>(null);
   const [isLoadingUsage, setIsLoadingUsage] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  
+  // 模型选择相关状态
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_AI_MODEL);
+  const [isSavingModel, setIsSavingModel] = useState(false);
+  const [modelSaveSuccess, setModelSaveSuccess] = useState(false);
 
   // 检查登录状态
   useEffect(() => {
@@ -52,7 +62,7 @@ export default function SettingsPage() {
     }
   }, [sessionStatus, router]);
 
-  // 加载使用量信息
+  // 加载使用量信息和默认模型
   useEffect(() => {
     const fetchUsage = async () => {
       try {
@@ -62,6 +72,10 @@ export default function SettingsPage() {
           const data = await response.json();
           setUsage(data);
           setHasExistingKey(data.hasApiKey);
+          // 设置已保存的默认模型
+          if (data.defaultModel) {
+            setSelectedModel(data.defaultModel);
+          }
         }
       } catch (err) {
         console.error('Fetch usage error:', err);
@@ -138,6 +152,36 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Logout error:', error);
       setIsLoggingOut(false);
+    }
+  };
+
+  // 保存默认模型
+  const handleSaveModel = async (modelId: string) => {
+    if (!hasExistingKey) return;
+    
+    setSelectedModel(modelId);
+    setIsSavingModel(true);
+    setModelSaveSuccess(false);
+    
+    try {
+      const response = await fetch('/api/settings/api-key', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          defaultModel: modelId,
+        }),
+      });
+      
+      if (response.ok) {
+        setModelSaveSuccess(true);
+        setTimeout(() => setModelSaveSuccess(false), 2000);
+      }
+    } catch (err) {
+      console.error('Save model error:', err);
+    } finally {
+      setIsSavingModel(false);
     }
   };
 
@@ -298,6 +342,122 @@ export default function SettingsPage() {
                       <li>完全掌控翻译成本</li>
                     </ul>
                   </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 默认 AI 模型选择 */}
+          <Card className="mb-4 md:mb-6">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
+                <Sparkles className="h-5 w-5" />
+                默认 AI 模型
+                {modelSaveSuccess && (
+                  <span className="ml-2 text-sm font-normal text-green-600 flex items-center gap-1">
+                    <Check className="h-4 w-4" />
+                    已保存
+                  </span>
+                )}
+              </CardTitle>
+              <CardDescription>
+                选择翻译时使用的 AI 模型，不同模型的效果和价格不同
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!hasExistingKey ? (
+                <div className="text-center py-6">
+                  <Key className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground mb-2">请先配置 API Key</p>
+                  <p className="text-sm text-muted-foreground">
+                    配置 OpenRouter API Key 后，即可选择您喜欢的 AI 模型
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* 推荐模型 */}
+                  <div>
+                    <div className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <span className="text-primary">推荐模型</span>
+                      <span className="text-xs text-muted-foreground">（性价比高、翻译效果好）</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {SUPPORTED_AI_MODELS.filter(m => m.recommended).map((model) => (
+                        <button
+                          key={model.id}
+                          onClick={() => handleSaveModel(model.id)}
+                          disabled={isSavingModel}
+                          className={`p-3 rounded-lg border text-left transition-all hover:border-primary/50 ${
+                            selectedModel === model.id
+                              ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                              : 'border-border'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-sm truncate">{model.name}</div>
+                              <div className="text-xs text-muted-foreground">{model.provider}</div>
+                            </div>
+                            {selectedModel === model.id && (
+                              <Check className="h-4 w-4 text-primary flex-shrink-0 ml-2" />
+                            )}
+                          </div>
+                          {model.description && (
+                            <div className="text-xs text-muted-foreground mt-1.5 line-clamp-1">
+                              {model.description}
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 其他模型 */}
+                  <div>
+                    <div className="text-sm font-medium mb-3">其他模型</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
+                      {SUPPORTED_AI_MODELS.filter(m => !m.recommended).map((model) => (
+                        <button
+                          key={model.id}
+                          onClick={() => handleSaveModel(model.id)}
+                          disabled={isSavingModel}
+                          className={`p-3 rounded-lg border text-left transition-all hover:border-primary/50 ${
+                            selectedModel === model.id
+                              ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                              : 'border-border'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-sm truncate">{model.name}</div>
+                              <div className="text-xs text-muted-foreground">{model.provider}</div>
+                            </div>
+                            {selectedModel === model.id && (
+                              <Check className="h-4 w-4 text-primary flex-shrink-0 ml-2" />
+                            )}
+                          </div>
+                          {model.description && (
+                            <div className="text-xs text-muted-foreground mt-1.5 line-clamp-1">
+                              {model.description}
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground mt-4">
+                    提示：你也可以在每个仓库的配置中单独指定模型，覆盖此默认设置。
+                    <a 
+                      href="https://openrouter.ai/rankings" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline ml-1 inline-flex items-center gap-1"
+                    >
+                      查看模型排行榜
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </p>
                 </div>
               )}
             </CardContent>

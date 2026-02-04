@@ -7,8 +7,8 @@ import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navbar, Footer } from "@/components/layout";
-import { ArrowLeft, Save, Languages, FolderTree, Loader2, AlertCircle, CheckCircle2, RefreshCw, ChevronRight, ChevronDown, FileText } from "lucide-react";
-import { SUPPORTED_LANGUAGES } from "@/lib/constants";
+import { ArrowLeft, Save, Languages, FolderTree, Loader2, AlertCircle, CheckCircle2, RefreshCw, ChevronRight, ChevronDown, FileText, Sparkles, Check, ExternalLink } from "lucide-react";
+import { SUPPORTED_LANGUAGES, SUPPORTED_AI_MODELS, DEFAULT_AI_MODEL } from "@/lib/constants";
 
 // 文件树节点类型
 interface FileNode {
@@ -38,6 +38,7 @@ export default function RepoConfigPage({ params }: { params: Promise<{ id: strin
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
+  const [aiModel, setAiModel] = useState<string | null>(null);  // null 表示使用默认设置
 
   // 检查登录状态
   useEffect(() => {
@@ -80,6 +81,7 @@ export default function RepoConfigPage({ params }: { params: Promise<{ id: strin
           setBaseLanguage(config.baseLanguage || 'zh-CN');
           setTargetLanguages(config.targetLanguages || []);
           setSelectedFiles(config.includePaths || []);
+          setAiModel(config.aiModel || null);
         }
 
         if (filesRes.ok) {
@@ -169,6 +171,7 @@ export default function RepoConfigPage({ params }: { params: Promise<{ id: strin
           baseLanguage,
           targetLanguages,
           includePaths: selectedFiles,
+          aiModel: aiModel,
         }),
       });
       
@@ -451,6 +454,127 @@ export default function RepoConfigPage({ params }: { params: Promise<{ id: strin
             </Card>
           </div>
 
+          {/* AI 模型选择 */}
+          <Card className="mt-4 md:mt-6">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
+                <Sparkles className="h-5 w-5" />
+                AI 模型
+              </CardTitle>
+              <CardDescription>
+                选择翻译时使用的 AI 模型（留空则使用设置页面的默认模型）
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* 使用默认选项 */}
+                <button
+                  onClick={() => setAiModel(null)}
+                  className={`w-full p-4 rounded-lg border text-left transition-all hover:border-primary/50 ${
+                    aiModel === null
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                      : 'border-border'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">使用默认设置</div>
+                      <div className="text-sm text-muted-foreground">
+                        使用设置页面配置的默认 AI 模型
+                      </div>
+                    </div>
+                    {aiModel === null && (
+                      <Check className="h-5 w-5 text-primary flex-shrink-0" />
+                    )}
+                  </div>
+                </button>
+
+                {/* 推荐模型 */}
+                <div>
+                  <div className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <span className="text-primary">推荐模型</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {SUPPORTED_AI_MODELS.filter(m => m.recommended).map((model) => (
+                      <button
+                        key={model.id}
+                        onClick={() => setAiModel(model.id)}
+                        className={`p-3 rounded-lg border text-left transition-all hover:border-primary/50 ${
+                          aiModel === model.id
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                            : 'border-border'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-sm truncate">{model.name}</div>
+                            <div className="text-xs text-muted-foreground">{model.provider}</div>
+                          </div>
+                          {aiModel === model.id && (
+                            <Check className="h-4 w-4 text-primary flex-shrink-0 ml-2" />
+                          )}
+                        </div>
+                        {model.description && (
+                          <div className="text-xs text-muted-foreground mt-1.5 line-clamp-1">
+                            {model.description}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 其他模型（可折叠） */}
+                <details className="group">
+                  <summary className="cursor-pointer text-sm font-medium mb-3 list-none flex items-center gap-2">
+                    <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+                    其他模型
+                  </summary>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
+                    {SUPPORTED_AI_MODELS.filter(m => !m.recommended).map((model) => (
+                      <button
+                        key={model.id}
+                        onClick={() => setAiModel(model.id)}
+                        className={`p-3 rounded-lg border text-left transition-all hover:border-primary/50 ${
+                          aiModel === model.id
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                            : 'border-border'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-sm truncate">{model.name}</div>
+                            <div className="text-xs text-muted-foreground">{model.provider}</div>
+                          </div>
+                          {aiModel === model.id && (
+                            <Check className="h-4 w-4 text-primary flex-shrink-0 ml-2" />
+                          )}
+                        </div>
+                        {model.description && (
+                          <div className="text-xs text-muted-foreground mt-1.5 line-clamp-1">
+                            {model.description}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </details>
+
+                <p className="text-xs text-muted-foreground">
+                  <a 
+                    href="https://openrouter.ai/rankings" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    查看 OpenRouter 模型排行榜
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* 保存按钮 */}
           <div className="mt-6 md:mt-8 flex flex-col sm:flex-row justify-end gap-3">
             <Link href={`/repo/${id}`} className="w-full sm:w-auto">
@@ -527,6 +651,15 @@ export default function RepoConfigPage({ params }: { params: Promise<{ id: strin
                   ) : (
                     <span className="text-muted-foreground">未选择（将翻译所有 Markdown 文件）</span>
                   )}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground mb-1">AI 模型</div>
+                <div className="font-medium">
+                  {aiModel 
+                    ? SUPPORTED_AI_MODELS.find(m => m.id === aiModel)?.name || aiModel
+                    : <span className="text-muted-foreground">使用默认设置</span>
+                  }
                 </div>
               </div>
             </CardContent>

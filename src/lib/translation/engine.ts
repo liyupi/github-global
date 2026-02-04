@@ -28,16 +28,23 @@ export interface TranslationOptions {
 }
 
 /**
- * 获取用户的 API Key（优先用户自带，否则使用平台托管）
+ * 获取用户的 API Key 和默认模型（优先用户自带，否则使用平台托管）
  */
-async function getApiKeyForUser(userId: string): Promise<string> {
+async function getApiKeyAndModelForUser(userId: string): Promise<{ apiKey: string; defaultModel: string | null }> {
   // 1. 优先查找用户自带的 API Key
   const userApiKey = await prisma.apiKey.findFirst({
     where: { userId, provider: 'openrouter', isActive: true },
+    select: {
+      encryptedKey: true,
+      defaultModel: true,
+    },
   });
 
   if (userApiKey) {
-    return decrypt(userApiKey.encryptedKey);
+    return {
+      apiKey: decrypt(userApiKey.encryptedKey),
+      defaultModel: userApiKey.defaultModel,
+    };
   }
 
   // 2. 使用平台托管的 API Key
@@ -47,7 +54,19 @@ async function getApiKeyForUser(userId: string): Promise<string> {
     throw new Error('No API key available. Please add your OpenRouter API key in settings.');
   }
 
-  return platformApiKey;
+  return {
+    apiKey: platformApiKey,
+    defaultModel: null,
+  };
+}
+
+/**
+ * 获取用户的 API Key（优先用户自带，否则使用平台托管）
+ * @deprecated 使用 getApiKeyAndModelForUser 代替
+ */
+async function getApiKeyForUser(userId: string): Promise<string> {
+  const { apiKey } = await getApiKeyAndModelForUser(userId);
+  return apiKey;
 }
 
 /**
@@ -155,8 +174,8 @@ export async function executeTranslation(options: TranslationOptions): Promise<{
 
     console.log(`[Translation] Repository: ${repository.fullName}`);
 
-    // 2. 获取用户的 API Key
-    const apiKey = await getApiKeyForUser(userId);
+    // 2. 获取用户的 API Key 和默认模型
+    const { apiKey, defaultModel: userDefaultModel } = await getApiKeyAndModelForUser(userId);
 
     // 3. 获取 GitHub Octokit 客户端
     let octokit: Octokit;
@@ -219,7 +238,19 @@ export async function executeTranslation(options: TranslationOptions): Promise<{
     let completedFiles = 0;
     let failedFiles = 0;
     const baseLanguage = repository.config?.baseLanguage || 'zh-CN';
-    const aiModel = repository.config?.aiModel as string | undefined;
+    
+    // 模型优先级：仓库配置 > 用户默认 > 系统默认 (undefined 表示使用 fallback 机制)
+    const repoAiModel = repository.config?.aiModel as string | undefined;
+    const aiModel = repoAiModel || userDefaultModel || undefined;
+    
+    console.log(`[Translation] Using AI model: ${aiModel || 'default (fallback)'}`);
+    if (repoAiModel) {
+      console.log('[Translation] Model source: repository config');
+    } else if (userDefaultModel) {
+      console.log('[Translation] Model source: user default');
+    } else {
+      console.log('[Translation] Model source: system default (fallback)');
+    }
 
     for (const filePath of filesToTranslate) {
       // 获取源文件内容

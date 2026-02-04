@@ -11,6 +11,7 @@ export interface AIModel {
   name: string;
   provider: string;
   recommended: boolean;
+  description?: string;  // 模型描述
 }
 
 export interface FileTreeNode {

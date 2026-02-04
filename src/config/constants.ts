@@ -26,43 +26,176 @@ export const SUPPORTED_LANGUAGES: Language[] = [
   { code: 'ms', name: '马来语', nativeName: 'Malay' },
 ];
 
-// 支持的 AI 模型列表
+// 支持的 AI 模型列表（基于 OpenRouter 排行榜前 20 的主流文本大模型）
+// 参考：https://openrouter.ai/rankings
 export const SUPPORTED_AI_MODELS: AIModel[] = [
+  // === 推荐模型（性价比高、翻译效果好） ===
+  {
+    id: 'deepseek/deepseek-chat',
+    name: 'DeepSeek V3',
+    provider: 'DeepSeek',
+    recommended: true,
+    description: '性价比之王，中文翻译效果出色',
+  },
+  {
+    id: 'google/gemini-2.5-flash-preview',
+    name: 'Gemini 2.5 Flash',
+    provider: 'Google',
+    recommended: true,
+    description: '速度快、成本低、效果好',
+  },
+  {
+    id: 'anthropic/claude-sonnet-4',
+    name: 'Claude Sonnet 4',
+    provider: 'Anthropic',
+    recommended: true,
+    description: '综合能力强，翻译质量高',
+  },
+  
+  // === Google 系列 ===
+  {
+    id: 'google/gemini-2.5-pro-preview',
+    name: 'Gemini 2.5 Pro',
+    provider: 'Google',
+    recommended: false,
+    description: 'Google 最强模型，效果出色',
+  },
+  {
+    id: 'google/gemini-2.0-flash-001',
+    name: 'Gemini 2.0 Flash',
+    provider: 'Google',
+    recommended: false,
+    description: '平衡速度与效果',
+  },
+  
+  // === Anthropic Claude 系列 ===
+  {
+    id: 'anthropic/claude-opus-4',
+    name: 'Claude Opus 4',
+    provider: 'Anthropic',
+    recommended: false,
+    description: 'Anthropic 旗舰模型',
+  },
   {
     id: 'anthropic/claude-3.5-sonnet',
     name: 'Claude 3.5 Sonnet',
     provider: 'Anthropic',
-    recommended: true,
+    recommended: false,
+    description: '经典高质量模型',
   },
+  {
+    id: 'anthropic/claude-3.5-haiku',
+    name: 'Claude 3.5 Haiku',
+    provider: 'Anthropic',
+    recommended: false,
+    description: '速度快、成本低',
+  },
+
+  // === OpenAI 系列 ===
   {
     id: 'openai/gpt-4o',
     name: 'GPT-4o',
     provider: 'OpenAI',
-    recommended: true,
+    recommended: false,
+    description: 'OpenAI 多模态旗舰模型',
   },
   {
-    id: 'google/gemini-pro-1.5',
-    name: 'Gemini Pro 1.5',
-    provider: 'Google',
+    id: 'openai/gpt-4o-mini',
+    name: 'GPT-4o Mini',
+    provider: 'OpenAI',
     recommended: false,
+    description: '速度快、成本低',
   },
   {
-    id: 'anthropic/claude-3-haiku',
-    name: 'Claude 3 Haiku',
-    provider: 'Anthropic',
+    id: 'openai/gpt-4.1',
+    name: 'GPT-4.1',
+    provider: 'OpenAI',
     recommended: false,
+    description: 'OpenAI 最新模型',
+  },
+  {
+    id: 'openai/o3-mini',
+    name: 'o3-mini',
+    provider: 'OpenAI',
+    recommended: false,
+    description: '推理能力强',
+  },
+
+  // === 国产模型 ===
+  {
+    id: 'qwen/qwen-turbo',
+    name: 'Qwen Turbo',
+    provider: '阿里云',
+    recommended: false,
+    description: '通义千问，中文能力强',
+  },
+  {
+    id: 'qwen/qwen-plus',
+    name: 'Qwen Plus',
+    provider: '阿里云',
+    recommended: false,
+    description: '通义千问增强版',
+  },
+  {
+    id: 'qwen/qwen-max',
+    name: 'Qwen Max',
+    provider: '阿里云',
+    recommended: false,
+    description: '通义千问旗舰版',
+  },
+
+  // === xAI Grok 系列 ===
+  {
+    id: 'x-ai/grok-3-beta',
+    name: 'Grok 3',
+    provider: 'xAI',
+    recommended: false,
+    description: 'xAI 最新模型',
+  },
+  {
+    id: 'x-ai/grok-2',
+    name: 'Grok 2',
+    provider: 'xAI',
+    recommended: false,
+    description: 'xAI 旗舰模型',
+  },
+
+  // === Meta Llama 系列 ===
+  {
+    id: 'meta-llama/llama-3.3-70b-instruct',
+    name: 'Llama 3.3 70B',
+    provider: 'Meta',
+    recommended: false,
+    description: '开源大模型，效果不错',
+  },
+  
+  // === 其他热门模型 ===
+  {
+    id: 'mistralai/mistral-large-2411',
+    name: 'Mistral Large',
+    provider: 'Mistral AI',
+    recommended: false,
+    description: '欧洲领先的 AI 模型',
+  },
+  {
+    id: 'cohere/command-r-plus',
+    name: 'Command R+',
+    provider: 'Cohere',
+    recommended: false,
+    description: '企业级 AI 模型',
   },
 ];
 
-// 默认 AI 模型
-export const DEFAULT_AI_MODEL = 'qwen/qwen-turbo';
+// 默认 AI 模型（性价比高、翻译效果好）
+export const DEFAULT_AI_MODEL = 'deepseek/deepseek-chat';
 
 // 模型优先级（用于 fallback）
 export const MODEL_PRIORITY = [
+  'deepseek/deepseek-chat',
+  'google/gemini-2.5-flash-preview',
   'qwen/qwen-turbo',
-  'openai/gpt-4o',
-  'google/gemini-pro-1.5',
-  'anthropic/claude-3-haiku',
+  'anthropic/claude-3.5-haiku',
+  'openai/gpt-4o-mini',
 ];
 
 // 限流配置

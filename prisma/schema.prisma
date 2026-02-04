@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")  // Supabase 需要直连 URL 用于迁移
 }
 
 // 用户表
@@ -18,7 +19,7 @@ model User {
   name              String?
   email             String?
   avatarUrl         String?
-  accessToken       String       @db.Text  // 加密存储
+  accessToken       String       // 加密存储
   installationId    Int?         // GitHub App Installation ID
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
@@ -37,7 +38,7 @@ model ApiKey {
   id           String   @id @default(cuid())
   userId       String
   provider     String   @default("openrouter")  // 预留其他 AI 提供商
-  encryptedKey String   @db.Text               // AES-256 加密存储
+  encryptedKey String   // AES-256 加密存储
   isActive     Boolean  @default(true)
   defaultModel String?  // 用户默认使用的 AI 模型（如 deepseek/deepseek-chat）
   createdAt    DateTime @default(now())
@@ -72,7 +73,7 @@ model Repository {
   owner           String   // 仓库所有者
   name            String   // 仓库名称
   fullName        String   // owner/name
-  description     String?  @db.Text
+  description     String?
   defaultBranch   String   @default("main")
   isPrivate       Boolean  @default(false)
   lastSyncedAt    DateTime?
@@ -117,7 +118,7 @@ model TranslationTask {
   completedFiles  Int              @default(0)
   failedFiles     Int              @default(0)
   progress        Float            @default(0)  // 0-100
-  errorMessage    String?          @db.Text
+  errorMessage    String?
   pullRequestUrl  String?          // PR 链接
   pullRequestNumber Int?           // PR 编号
   startedAt       DateTime?
@@ -142,10 +143,10 @@ model TranslatedFile {
   targetPath        String        // 翻译后的路径
   targetLanguage    String        // 目标语言
   status            FileStatus    @default(PENDING)
-  sourceContent     String?       @db.LongText
-  translatedContent String?       @db.LongText
+  sourceContent     String?       // PostgreSQL 的 String 默认支持长文本
+  translatedContent String?
   tokensUsed        Int?          // 消耗的 token 数
-  errorMessage      String?       @db.Text
+  errorMessage      String?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 

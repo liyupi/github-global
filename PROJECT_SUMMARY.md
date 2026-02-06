@@ -144,7 +144,7 @@
 
 ## 📁 项目结构
 
-\`\`\`
+```
 github-global/
 ├── src/
 │   ├── app/                      # Next.js App Router
@@ -184,7 +184,7 @@ github-global/
 ├── tsconfig.json
 ├── next.config.ts
 └── README.md
-\`\`\`
+```
 
 ---
 
@@ -238,7 +238,7 @@ github-global/
 
 ### 方式 1: 快速启动 (推荐)
 
-\`\`\`bash
+```bash
 # 1. 安装依赖
 npm install
 
@@ -252,25 +252,25 @@ npm run db:push
 
 # 4. 启动开发服务器
 npm run dev
-\`\`\`
+```
 
 ### 方式 2: 使用脚本
 
-\`\`\`bash
+```bash
 # 一键设置
 bash scripts/setup.sh
 
 # 启动开发
 bash scripts/dev.sh
-\`\`\`
+```
 
 ### 方式 3: Docker
 
-\`\`\`bash
+```bash
 cd docker
 docker-compose up -d
 docker-compose exec app npx prisma db push
-\`\`\`
+```
 
 ---
 

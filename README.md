@@ -26,28 +26,28 @@ GitHub Global 是一个 SaaS 平台,帮助开源项目作者将文档自动翻�
 
 ### 1. 克隆项目
 
-\`\`\`bash
+```bash
 git clone https://github.com/your-username/github-global.git
 cd github-global
-\`\`\`
+```
 
 ### 2. 安装依赖
 
-\`\`\`bash
+```bash
 npm install
-\`\`\`
+```
 
 ### 3. 配置环境变量
 
 复制环境变量示例文件:
 
-\`\`\`bash
+```bash
 cp .env.example .env
-\`\`\`
+```
 
-编辑 \`.env\` 文件,填入以下必需配置:
+编辑 `.env` 文件,填入以下必需配置:
 
-\`\`\`env
+```env
 # 数据库连接
 DATABASE_URL="mysql://user:password@localhost:3306/github_global"
 
@@ -66,7 +66,7 @@ ENCRYPTION_KEY="your-32-byte-hex-key"
 
 # OpenRouter API Key (可选,用于平台托管模式)
 PLATFORM_OPENROUTER_API_KEY="sk-or-v1-xxx"
-\`\`\`
+```
 
 ### 4. 创建 GitHub App
 
@@ -74,9 +74,9 @@ PLATFORM_OPENROUTER_API_KEY="sk-or-v1-xxx"
 2. 点击 "New GitHub App"
 3. 填写以下信息:
    - **App Name**: GitHub Global (或你自己的名称)
-   - **Homepage URL**: \`http://localhost:3000\`
-   - **Callback URL**: \`http://localhost:3000/api/auth/callback/github\`
-   - **Webhook URL**: \`http://localhost:3000/api/webhooks/github\` (可选)
+   - **Homepage URL**: `http://localhost:3000`
+   - **Callback URL**: `http://localhost:3000/api/auth/callback/github`
+   - **Webhook URL**: `http://localhost:3000/api/webhooks/github` (可选)
 4. 配置权限:
    - Repository permissions:
      - Contents: Read & Write
@@ -84,7 +84,7 @@ PLATFORM_OPENROUTER_API_KEY="sk-or-v1-xxx"
      - Pull requests: Read & Write
    - Account permissions:
      - Email addresses: Read
-5. 创建后,记录以下信息到 \`.env\`:
+5. 创建后,记录以下信息到 `.env`:
    - App ID
    - Client ID
    - Client Secret
@@ -92,7 +92,7 @@ PLATFORM_OPENROUTER_API_KEY="sk-or-v1-xxx"
 
 ### 5. 初始化数据库
 
-\`\`\`bash
+```bash
 # 生成 Prisma Client
 npm run db:generate
 
@@ -101,19 +101,19 @@ npm run db:push
 
 # 或运行迁移 (生产环境)
 npm run db:migrate
-\`\`\`
+```
 
 ### 6. 启动开发服务器
 
-\`\`\`bash
+```bash
 npm run dev
-\`\`\`
+```
 
 访问 [http://localhost:3000](http://localhost:3000) 查看应用。
 
 ## 📁 项目结构
 
-\`\`\`
+```
 github-global/
 ├── src/
 │   ├── app/                      # Next.js App Router 页面
@@ -142,7 +142,7 @@ github-global/
 ├── package.json
 ├── tailwind.config.ts
 └── tsconfig.json
-\`\`\`
+```
 
 ## 🎨 技术栈
 
@@ -157,7 +157,7 @@ github-global/
 
 ## 🔧 开发命令
 
-\`\`\`bash
+```bash
 # 开发服务器
 npm run dev
 
@@ -175,13 +175,13 @@ npm run db:generate      # 生成 Prisma Client
 npm run db:push          # 推送 Schema 到数据库
 npm run db:migrate       # 运行数据库迁移
 npm run db:studio        # 打开 Prisma Studio
-\`\`\`
+```
 
 ## 🐳 Docker 部署
 
 ### 使用 Docker Compose
 
-\`\`\`bash
+```bash
 # 构建并启动
 cd docker
 docker-compose up -d
@@ -191,11 +191,11 @@ docker-compose logs -f app
 
 # 停止服务
 docker-compose down
-\`\`\`
+```
 
 ### 环境变量配置
 
-在 \`docker/docker-compose.yml\` 中配置环境变量,或创建 \`.env\` 文件。
+在 `docker/docker-compose.yml` 中配置环境变量,或创建 `.env` 文件。
 
 ## 📖 使用说明
 
@@ -224,7 +224,7 @@ docker-compose down
 
 ### 5. 合并翻译
 
-在 GitHub 上查看并合并 PR,翻译内容将添加到仓库的 \`translations/\` 目录下。
+在 GitHub 上查看并合并 PR,翻译内容将添加到仓库的 `translations/` 目录下。
 
 ## 🌍 支持的语言
 
@@ -262,30 +262,30 @@ docker-compose down
 
 ### Q: 如何生成 ENCRYPTION_KEY?
 
-\`\`\`bash
+```bash
 # 使用 Node.js 生成
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-\`\`\`
+```
 
 ### Q: 如何生成 NEXTAUTH_SECRET?
 
-\`\`\`bash
+```bash
 # 使用 openssl
 openssl rand -base64 32
-\`\`\`
+```
 
 ### Q: MySQL 连接失败?
 
-确保 MySQL 服务已启动,并且 \`DATABASE_URL\` 配置正确:
+确保 MySQL 服务已启动,并且 `DATABASE_URL` 配置正确:
 
-\`\`\`env
+```env
 DATABASE_URL="mysql://用户名:密码@主机:端口/数据库名"
-\`\`\`
+```
 
 ### Q: GitHub App 回调失败?
 
 检查 GitHub App 的 Callback URL 是否正确配置为:
-\`http://localhost:3000/api/auth/callback/github\`
+`http://localhost:3000/api/auth/callback/github`
 
 ## 📄 许可证
 

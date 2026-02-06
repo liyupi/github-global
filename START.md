@@ -4,22 +4,22 @@
 
 ### 1️⃣ 安装依赖
 
-\`\`\`bash
+```bash
 npm install
-\`\`\`
+```
 
 ### 2️⃣ 配置环境变量
 
-创建 \`.env\` 文件:
+创建 `.env` 文件:
 
-\`\`\`bash
+```bash
 # 复制示例文件
 cp .env.example .env
-\`\`\`
+```
 
 **最小配置** (必需):
 
-\`\`\`env
+```env
 # 数据库
 DATABASE_URL="mysql://root:password@localhost:3306/github_global"
 
@@ -35,23 +35,23 @@ GITHUB_APP_ID="your-app-id"
 GITHUB_APP_CLIENT_ID="your-client-id"
 GITHUB_APP_CLIENT_SECRET="your-client-secret"
 GITHUB_APP_PRIVATE_KEY="your-private-key"
-\`\`\`
+```
 
 **生成密钥**:
 
-\`\`\`bash
+```bash
 # NEXTAUTH_SECRET
 openssl rand -base64 32
 
 # ENCRYPTION_KEY
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-\`\`\`
+```
 
 **创建 GitHub App**: 访问 https://github.com/settings/apps/new
 
 ### 3️⃣ 初始化并启动
 
-\`\`\`bash
+```bash
 # 生成 Prisma Client
 npm run db:generate
 
@@ -60,7 +60,7 @@ npm run db:push
 
 # 启动开发服务器
 npm run dev
-\`\`\`
+```
 
 访问: **http://localhost:3000**
 
@@ -92,7 +92,7 @@ npm run dev
 
 ## 📁 项目结构
 
-\`\`\`
+```
 github-global/
 ├── src/
 │   ├── app/                      # Next.js 页面
@@ -111,7 +111,7 @@ github-global/
 ├── docs/                        # 文档
 ├── docker/                      # Docker 配置
 └── scripts/                     # 脚本
-\`\`\`
+```
 
 ---
 
@@ -119,7 +119,7 @@ github-global/
 
 ### 中国红主题
 
-- 主色调: \`hsl(0, 84%, 50%)\` (中国红)
+- 主色调: `hsl(0, 84%, 50%)` (中国红)
 - 深色模式支持
 - 现代化 UI 设计
 - 响应式布局
@@ -136,7 +136,7 @@ github-global/
 
 ## 🔧 开发命令
 
-\`\`\`bash
+```bash
 # 开发
 npm run dev              # 启动开发服务器
 
@@ -152,13 +152,13 @@ npm run db:studio        # 打开数据库管理界面
 
 # 代码质量
 npm run lint             # 代码检查
-\`\`\`
+```
 
 ---
 
 ## 🐳 Docker 部署
 
-\`\`\`bash
+```bash
 # 进入 docker 目录
 cd docker
 
@@ -173,7 +173,7 @@ docker-compose logs -f app
 
 # 停止服务
 docker-compose down
-\`\`\`
+```
 
 ---
 
@@ -210,12 +210,12 @@ docker-compose down
 ### 数据库
 
 - 需要 MySQL 8.0+
-- 确保数据库已创建: \`github_global\`
+- 确保数据库已创建: `github_global`
 
 ### GitHub App
 
 - 必须配置才能登录
-- Callback URL: \`http://localhost:3000/api/auth/callback/github\`
+- Callback URL: `http://localhost:3000/api/auth/callback/github`
 - 需要的权限:
   - Repository > Contents: Read & Write
   - Repository > Metadata: Read
@@ -228,32 +228,32 @@ docker-compose down
 
 ### Q: 依赖安装失败?
 
-\`\`\`bash
+```bash
 # 清理缓存
 rm -rf node_modules package-lock.json
 npm install
-\`\`\`
+```
 
 ### Q: 数据库连接失败?
 
 检查:
 1. MySQL 是否运行
-2. \`DATABASE_URL\` 配置是否正确
+2. `DATABASE_URL` 配置是否正确
 3. 数据库是否已创建
 
 ### Q: 页面样式错误?
 
-\`\`\`bash
+```bash
 # 重新构建
 rm -rf .next
 npm run dev
-\`\`\`
+```
 
 ---
 
 ## 📧 获取帮助
 
-- 查看文档: \`docs/\` 目录
+- 查看文档: `docs/` 目录
 - 检查日志: 开发服务器控制台
 - GitHub Issues: 提交问题
 
@@ -261,7 +261,7 @@ npm run dev
 
 ## 🎉 开始使用
 
-\`\`\`bash
+```bash
 # 一键启动 (使用脚本)
 bash scripts/setup.sh
 
@@ -270,6 +270,6 @@ npm install
 npm run db:generate
 npm run db:push
 npm run dev
-\`\`\`
+```
 
 **祝你使用愉快! 🚀**
